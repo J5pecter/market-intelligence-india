@@ -13,11 +13,12 @@ services:
     healthCheckPath: /api/health
     envVars:
       - key: APP_ENV
-        # DEMO so a fresh deployment actually shows the platform working; every
-        # seeded row it serves is badged DEMO in the UI and in the API payload.
-        # Switch to PRODUCTION once you have wired a real data source - that
-        # makes seeded rows unservable rather than merely labelled.
-        value: DEMO
+        # PRODUCTION refuses to serve seeded rows at all, rather than merely
+        # labelling them. Real data only - which is the point of the tool.
+        value: PRODUCTION
+      - key: PERSONAL_USE_MODE
+        # Private research desk for one operator, not a service to others.
+        value: "true"
       - key: SECRET_KEY
         generateValue: true
       - key: DATABASE_URL
@@ -25,14 +26,31 @@ services:
           name: market-intelligence-db
           property: connectionString
       - key: ENABLE_SCHEDULER
-        # Free instances sleep, so in-process scheduling is unreliable.
-        # Drive jobs with an external cron hitting /api/admin/jobs/{job}/run.
+        # Free instances sleep, so in-process cron never fires reliably. The
+        # daily EOD ingestion is driven by a GitHub Actions schedule instead -
+        # see .github/workflows/ingest.yml.
         value: "false"
+      - key: ENABLE_EXCHANGE_ARCHIVES
+        # Official published bhavcopy / delivery / deal files.
+        value: "true"
       - key: ENABLE_NSE_PROVIDER
-        # Opt in only after reviewing https://www.nseindia.com/terms-conditions
+        # The site's internal JSON, distinct from the archives above. Opt in
+        # only after reviewing https://www.nseindia.com/terms-conditions
         value: "false"
+      - key: QUOTE_PROVIDERS
+        # No `demo` entry: PRODUCTION would strip it anyway, and listing it
+        # would imply a fallback that does not exist.
+        value: yahoo,manual
+      - key: HISTORY_PROVIDERS
+        value: yahoo,manual
+      - key: EOD_PROVIDERS
+        value: nse_archives,bse_archives
+      - key: MACRO_PROVIDERS
+        value: worldbank,rbi
       - key: CORS_ORIGINS
         sync: false               # set to your frontend origin
+      # Broker credentials are deliberately absent from this blueprint. Add
+      # them in the Render dashboard so they never touch the repository.
       - key: PYTHON_VERSION
         value: "3.12.7"
 

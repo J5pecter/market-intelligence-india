@@ -2,10 +2,10 @@
 
 import clsx from "clsx";
 import {
-  Activity, AlertTriangle, Bell, BookOpen, Briefcase, CalendarDays,
-  ChartCandlestick, FileText, FlaskConical, Gauge, Home, Landmark, Layers,
-  LineChart, Menu, Newspaper, Radar, ScrollText, Search, Settings, Shield,
-  Star, User, X,
+  Activity, AlertTriangle, Bell, BookOpen, Briefcase, Building2, CalendarDays,
+  ChartCandlestick, FileText, FlaskConical, Gauge, Globe, Home, Landmark,
+  Layers, LineChart, Menu, Newspaper, Radar, ScrollText, Search, Settings,
+  Shield, Star, User, X,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -26,6 +26,8 @@ const NAV = [
   { href: "/news", label: "News", icon: Newspaper },
   { href: "/research", label: "Research", icon: FileText },
   { href: "/documents", label: "Documents", icon: ScrollText },
+  { href: "/exchange", label: "Exchange record", icon: Building2 },
+  { href: "/macro", label: "Macro", icon: Globe },
   { href: "/scanners", label: "Scanners", icon: Radar },
   { href: "/backtesting", label: "Backtesting", icon: FlaskConical },
   { href: "/watchlist", label: "Watchlist", icon: Star },

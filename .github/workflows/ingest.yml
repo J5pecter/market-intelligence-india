@@ -1,0 +1,121 @@
+name: Daily EOD ingestion
+
+# The backend runs on a free instance that sleeps, so its in-process scheduler
+# cannot be relied on to fire at 18:30 IST. GitHub's scheduler can, so it
+# drives the ingestion from outside instead.
+#
+# Required repository secrets:
+#   API_BASE_URL   e.g. https://market-intelligence-api-xxxx.onrender.com
+#   API_EMAIL      an ADMIN user's email
+#   API_PASSWORD   that user's password
+#
+# The job is idempotent: re-running a session that is already stored corrects
+# those rows rather than duplicating them, so a retry is always safe.
+
+on:
+  schedule:
+    # 18:40 and 21:10 IST = 13:10 and 15:40 UTC, Monday to Friday.
+    # Two attempts because the exchange sometimes publishes late.
+    - cron: "10 13 * * 1-5"
+    - cron: "40 15 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Trading days to backfill (1 = latest session only)"
+        required: false
+        default: "1"
+
+concurrency:
+  group: eod-ingest
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    name: Pull the exchange record
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Wake the instance
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${API_BASE_URL:-}" ]; then
+            echo "API_BASE_URL secret is not set."
+            exit 1
+          fi
+          # A sleeping free instance takes up to a minute to cold-start, so
+          # poll rather than failing the first request.
+          for i in $(seq 1 20); do
+            code=$(curl -s -m 30 -o /dev/null -w "%{http_code}" "$API_BASE_URL/api/health" || true)
+            echo "attempt $i: HTTP $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 15
+          done
+          echo "Instance did not wake in time."
+          exit 1
+
+      - name: Ingest
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          API_EMAIL: ${{ secrets.API_EMAIL }}
+          API_PASSWORD: ${{ secrets.API_PASSWORD }}
+          DAYS: ${{ github.event.inputs.days || '1' }}
+        run: |
+          set -euo pipefail
+
+          token=$(curl -s -m 60 -X POST "$API_BASE_URL/api/auth/login" \
+            -H "Content-Type: application/json" \
+            -d "{\"email\":\"$API_EMAIL\",\"password\":\"$API_PASSWORD\"}" \
+            | python -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))")
+
+          if [ -z "$token" ]; then
+            # Never echo the response body - it can carry token material.
+            echo "Login failed. Check API_EMAIL / API_PASSWORD and that the user has the ADMIN role."
+            exit 1
+          fi
+
+          echo "Ingesting $DAYS session(s)..."
+          curl -s -m 900 -X POST \
+            "$API_BASE_URL/api/exchange/ingest?days=$DAYS" \
+            -H "Authorization: Bearer $token" \
+            -o response.json -w "HTTP %{http_code}\n"
+
+          python - <<'PY'
+          import json, sys
+          with open("response.json") as fh:
+              payload = json.load(fh)
+          summary = payload.get("summary") or {}
+          if not summary:
+              print("No summary returned:", json.dumps(payload)[:400])
+              sys.exit(1)
+          failed = []
+          for dataset, counts in sorted(summary.items()):
+              print(f"  {dataset:<18} rows={counts.get('rows', 0):<7} "
+                    f"ok={counts.get('OK', 0)} empty={counts.get('EMPTY', 0)} "
+                    f"failed={counts.get('FAILED', 0)}")
+              if counts.get("FAILED"):
+                  failed.append(dataset)
+          # An EMPTY register (no block deals reported) is a normal market
+          # outcome and must not fail the run. A FAILED fetch is a real problem.
+          if failed:
+              print(f"::error::datasets failed: {', '.join(failed)}")
+              sys.exit(1)
+          print("Ingestion completed.")
+          PY
+
+      - name: Report coverage
+        if: always()
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+        run: |
+          set -euo pipefail
+          curl -s -m 60 "$API_BASE_URL/api/exchange/ingest/status?limit=6" \
+            | python -c "
+          import json, sys
+          d = json.load(sys.stdin)
+          c = d.get('coverage', {})
+          print('Stored coverage:')
+          for k, v in c.items():
+              print(f'  {k}: {v}')
+          "

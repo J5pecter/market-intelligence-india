@@ -50,29 +50,71 @@ def environment() -> Dict[str, Any]:
         "app_env": settings.app_env.value,
         "demo_data_visible": settings.demo_data_allowed,
         "cache_backend": BACKEND_KIND,
+        "personal_use_mode": settings.personal_use_mode,
         "provider_chains": {
             capability: settings.providers_for(capability)
-            for capability in ("quote", "history", "option_chain", "news", "ipo")
+            for capability in ("quote", "history", "option_chain", "news",
+                               "ipo", "eod", "macro")
         },
         "nse_provider_enabled": settings.enable_nse_provider,
+        "exchange_archives_enabled": settings.enable_exchange_archives,
         "scheduler_enabled": settings.enable_scheduler,
+        # This endpoint is public, so it reports only whether a broker is
+        # wired up and how many fields are outstanding. Naming the fields
+        # would put credential identifiers on an unauthenticated response for
+        # no benefit; the admin provider-health view carries that detail.
+        "brokers": {
+            name: {
+                "configured": settings.broker_is_configured(name),
+                "fields_outstanding": len(_BROKER_FIELDS[name])
+                - len(settings.broker_credentials(name)),
+            }
+            for name in ("angelone", "dhan", "kite", "upstox")
+        },
+        "realtime_source": (
+            settings.configured_brokers[0] if settings.configured_brokers else None
+        ),
         "optional_integrations": {
             "telegram": bool(settings.telegram_bot_token),
             "email_smtp": bool(settings.smtp_host),
             "news_api_key": bool(settings.news_api_key),
-            "broker_api": bool(settings.broker_api_key),
         },
         "limitations": _limitations(),
     }
 
 
+_BROKER_FIELDS = {
+    "angelone": ("api_key", "client_code", "password", "totp_secret"),
+    "dhan": ("client_id", "access_token"),
+    "kite": ("api_key", "access_token"),
+    "upstox": ("access_token",),
+}
+
+
 def _limitations() -> List[str]:
-    notes = [
-        "Quotes from Yahoo Finance are delayed and intended for personal, "
-        "non-commercial use. They are not an exchange feed.",
+    notes: List[str] = []
+    if settings.configured_brokers:
+        notes.append(
+            f"Real-time quotes come from your {settings.configured_brokers[0]} "
+            "account. They are licensed to you personally and must not be "
+            "redistributed."
+        )
+    else:
+        notes.append(
+            "No broker is configured, so NOTHING here is real-time. Yahoo "
+            "quotes are delayed roughly 15 minutes and exchange archives are "
+            "end-of-day. Configure a broker for a live feed."
+        )
+    notes.append(
         "Intraday history is capped by the provider: roughly 7 days at 1-minute "
-        "resolution and 60 days at 5-30 minute resolution.",
-    ]
+        "resolution and 60 days at 5-30 minute resolution."
+    )
+    if settings.enable_exchange_archives:
+        notes.append(
+            "Exchange bhavcopy closes are settled prices but are NOT adjusted "
+            "for splits or bonuses - apply corporate actions before computing "
+            "long-horizon returns from them."
+        )
     if not settings.enable_nse_provider:
         notes.append(
             "The NSE adapter is disabled, so option chains, futures and "

@@ -3,6 +3,8 @@
 from app.db.base import Base  # noqa: F401
 from app.models.derivatives import (FuturesSnapshot, OptionChainSnapshot,  # noqa: F401
                                     OptionGreeks, OptionSnapshot)
+from app.models.exchange_data import (DealRecord, DeliveryRecord,  # noqa: F401
+                                      EodBar, IngestionRun)
 from app.models.fundamental import (CompanyProfile, CorporateAction,  # noqa: F401
                                     EarningsEvent, FinancialStatement,
                                     Fundamental, Shareholding)

@@ -236,6 +236,46 @@ class MarketDataProvider(abc.ABC):
     def get_ipos(self, **kw: Any) -> Sourced[List[Dict[str, Any]]]:
         raise ProviderUnsupported(f"{self.name} has no get_ipos")
 
+    # -- end-of-day official records --------------------------------------
+
+    def get_bhavcopy(self, on: Optional[date] = None,
+                     **kw: Any) -> Sourced[List[Dict[str, Any]]]:
+        """One session's official settlement prices for every scrip."""
+        raise ProviderUnsupported(f"{self.name} has no get_bhavcopy")
+
+    def get_delivery(self, on: Optional[date] = None,
+                     **kw: Any) -> Sourced[List[Dict[str, Any]]]:
+        """Deliverable quantity as a share of traded quantity, per scrip.
+
+        Only the exchange publishes this. It separates positional conviction
+        from intraday churn, which no price series can show on its own.
+        """
+        raise ProviderUnsupported(f"{self.name} has no get_delivery")
+
+    def get_bulk_deals(self, on: Optional[date] = None,
+                       **kw: Any) -> Sourced[List[Dict[str, Any]]]:
+        raise ProviderUnsupported(f"{self.name} has no get_bulk_deals")
+
+    def get_block_deals(self, on: Optional[date] = None,
+                        **kw: Any) -> Sourced[List[Dict[str, Any]]]:
+        raise ProviderUnsupported(f"{self.name} has no get_block_deals")
+
+    def get_fii_dii(self, on: Optional[date] = None,
+                    **kw: Any) -> Sourced[List[Dict[str, Any]]]:
+        raise ProviderUnsupported(f"{self.name} has no get_fii_dii")
+
+    # -- reference / macro -------------------------------------------------
+
+    def get_macro_series(self, indicator: str,
+                         **kw: Any) -> Sourced[List[Dict[str, Any]]]:
+        raise ProviderUnsupported(f"{self.name} has no get_macro_series")
+
+    def get_policy_rates(self, **kw: Any) -> Sourced[List[Dict[str, Any]]]:
+        raise ProviderUnsupported(f"{self.name} has no get_policy_rates")
+
+    def get_fund_navs(self, **kw: Any) -> Sourced[List[Dict[str, Any]]]:
+        raise ProviderUnsupported(f"{self.name} has no get_fund_navs")
+
     # -- introspection -----------------------------------------------------
 
     def supports(self, capability: str) -> bool:
@@ -262,7 +302,9 @@ class MarketDataProvider(abc.ABC):
                 for cap in (
                     "quote", "history", "instruments", "option_chain",
                     "futures_chain", "indices", "corporate_actions",
-                    "fundamentals", "news", "ipos",
+                    "fundamentals", "news", "ipos", "bhavcopy", "delivery",
+                    "bulk_deals", "block_deals", "fii_dii", "macro_series",
+                    "policy_rates", "fund_navs",
                 )
                 if self.supports(cap)
             ],

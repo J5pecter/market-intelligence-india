@@ -11,13 +11,24 @@ import logging
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
+import requests
+
 from app.core.cache import cached_call, rate_limit_ok
 from app.core.config import settings
 from app.core.data_quality import DataStatus, SourceReliability, Sourced, freshness
 from app.providers.base import (Bar, FundamentalsData, InstrumentRecord,
-                                MarketDataProvider, ProviderError, QuoteData)
+                                MarketDataProvider, ProviderError,
+                                ProviderNoData, QuoteData)
 
 logger = logging.getLogger(__name__)
+
+# Yahoo's chart endpoint 404s on a non-browser agent. This is the ordinary
+# identity a browser sends, not an attempt to defeat a bot check - there is no
+# challenge here, and we send exactly one UA and never rotate it.
+_BROWSER_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/122.0 Safari/537.36"
+)
 
 try:  # pragma: no cover - import guarded so the app boots without yfinance
     import yfinance as yf
@@ -88,46 +99,73 @@ class YahooProvider(MarketDataProvider):
 
     def get_quote(self, symbol: str, exchange: str = "NSE",
                   **kw: Any) -> Sourced[QuoteData]:
+        """Quote via Yahoo's chart endpoint.
+
+        Deliberately not `yfinance.fast_info`: that helper broke against
+        Yahoo's current API and returns silent `None`s rather than raising,
+        which would surface here as a phantom "no price" for a stock that is
+        trading perfectly well. The chart endpoint also carries
+        `regularMarketTime`, so `observed_at` is the exchange's own timestamp
+        instead of the moment we happened to call - which is the difference
+        between `freshness()` measuring data age and measuring our latency.
+        """
         self._guard()
         ticker_symbol = _yahoo_ticker(symbol, exchange)
 
         def _fetch() -> Optional[Dict[str, Any]]:
             try:
-                tk = yf.Ticker(ticker_symbol)
-                info = tk.fast_info
-                # fast_info is a lazy mapping; materialise the fields we need.
-                data = {
-                    "ltp": _f(info.get("last_price")),
-                    "open": _f(info.get("open")),
-                    "high": _f(info.get("day_high")),
-                    "low": _f(info.get("day_low")),
-                    "previous_close": _f(info.get("previous_close")),
-                    "volume": _i(info.get("last_volume")),
-                    "week52_high": _f(info.get("year_high")),
-                    "week52_low": _f(info.get("year_low")),
-                    "market_cap": _f(info.get("market_cap")),
-                }
-            except Exception as exc:  # noqa: BLE001
-                raise ProviderError(f"yahoo quote failed for {symbol}: {exc}") from exc
-            if data["ltp"] is None:
-                raise ProviderError(f"yahoo returned no price for {symbol}")
-            return data
+                resp = requests.get(
+                    f"{self.base_url}/v8/finance/chart/{ticker_symbol}",
+                    params={"range": "1d", "interval": "1d"},
+                    headers={"User-Agent": _BROWSER_UA},
+                    timeout=20,
+                )
+            except requests.RequestException as exc:
+                raise ProviderError(f"yahoo transport error for {symbol}: {exc}") from exc
+            if resp.status_code == 404:
+                raise ProviderNoData(f"yahoo does not list {ticker_symbol}")
+            if resp.status_code >= 400:
+                raise ProviderError(
+                    f"yahoo returned HTTP {resp.status_code} for {ticker_symbol}"
+                )
+            try:
+                results = (resp.json().get("chart") or {}).get("result") or []
+            except ValueError as exc:
+                raise ProviderError("yahoo returned non-JSON") from exc
+            if not results:
+                raise ProviderNoData(f"yahoo has no data for {ticker_symbol}")
+            meta = results[0].get("meta") or {}
+            if _f(meta.get("regularMarketPrice")) is None:
+                raise ProviderNoData(f"yahoo returned no price for {symbol}")
+            return {
+                "ltp": _f(meta.get("regularMarketPrice")),
+                "high": _f(meta.get("regularMarketDayHigh")),
+                "low": _f(meta.get("regularMarketDayLow")),
+                "previous_close": _f(meta.get("chartPreviousClose")),
+                "volume": _i(meta.get("regularMarketVolume")),
+                "week52_high": _f(meta.get("fiftyTwoWeekHigh")),
+                "week52_low": _f(meta.get("fiftyTwoWeekLow")),
+                "market_time": _i(meta.get("regularMarketTime")),
+                "name": meta.get("longName") or meta.get("shortName"),
+                "currency": meta.get("currency") or "INR",
+            }
 
-        cache_key = f"yahoo:quote:{ticker_symbol}"
-        raw = cached_call(cache_key, 45, _fetch)
+        raw = cached_call(f"yahoo:quote:{ticker_symbol}", 45, _fetch)
         if not raw:
-            raise ProviderError(f"yahoo returned nothing for {symbol}")
+            raise ProviderNoData(f"yahoo returned nothing for {symbol}")
 
-        prev = raw.get("previous_close")
-        ltp = raw.get("ltp")
+        prev, ltp = raw.get("previous_close"), raw.get("ltp")
         change = (ltp - prev) if (ltp is not None and prev) else None
         change_pct = (change / prev * 100.0) if (change is not None and prev) else None
 
-        observed_at = datetime.now(tz=timezone.utc)
+        stamp = raw.get("market_time")
+        observed_at = (
+            datetime.fromtimestamp(stamp, tz=timezone.utc) if stamp
+            else datetime.now(tz=timezone.utc)
+        )
         quote = QuoteData(
             symbol=symbol,
             ltp=ltp,
-            open=raw.get("open"),
             high=raw.get("high"),
             low=raw.get("low"),
             previous_close=prev,
@@ -136,8 +174,8 @@ class YahooProvider(MarketDataProvider):
             volume=raw.get("volume"),
             week52_high=raw.get("week52_high"),
             week52_low=raw.get("week52_low"),
-            market_cap=raw.get("market_cap"),
             observed_at=observed_at,
+            currency=raw.get("currency") or "INR",
         )
         return self._envelope(quote, "quote", observed_at)
 

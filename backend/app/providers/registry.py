@@ -20,9 +20,14 @@ from app.core.config import settings
 from app.core.data_quality import DataStatus, Sourced
 from app.providers.base import (MarketDataProvider, ProviderError,
                                 ProviderNoData, ProviderUnsupported)
+from app.providers.brokers import BROKER_CLASSES
 from app.providers.db_backed import DemoProvider, ManualProvider
 from app.providers.news_rss import GoogleNewsRssProvider
 from app.providers.nse import NseProvider
+from app.providers.nse_archives import (BseArchivesProvider,
+                                        NseArchivesProvider)
+from app.providers.reference import (AmfiProvider, RbiProvider,
+                                     WorldBankProvider)
 from app.providers.yahoo import YahooProvider
 
 logger = logging.getLogger(__name__)
@@ -61,13 +66,23 @@ class ProviderRegistry:
     # -- registration ------------------------------------------------------
 
     def _register_defaults(self) -> None:
-        for provider in (
+        providers: List[MarketDataProvider] = [
             YahooProvider(),
             NseProvider(),
+            NseArchivesProvider(),
+            BseArchivesProvider(),
+            AmfiProvider(),
+            RbiProvider(),
+            WorldBankProvider(),
             GoogleNewsRssProvider(),
             ManualProvider(),
             DemoProvider(),
-        ):
+        ]
+        # Brokers are always registered so the health endpoint can report that
+        # they exist but are unconfigured. `providers_for()` keeps unconfigured
+        # ones out of every chain, so registering them costs nothing.
+        providers.extend(cls() for cls in BROKER_CLASSES.values())
+        for provider in providers:
             self.register(provider)
 
     def register(self, provider: MarketDataProvider) -> None:
@@ -226,7 +241,8 @@ class ProviderRegistry:
                 "failure_count": health.failure_count,
                 "calls_last_hour": health.calls_last_hour(),
                 "in_chains": [
-                    key for key in ("quote", "history", "option_chain", "news", "ipo")
+                    key for key in ("quote", "history", "option_chain", "news",
+                                    "ipo", "eod", "macro")
                     if name in settings.providers_for(key)
                 ],
             })
@@ -238,6 +254,10 @@ def _provider_enabled(name: str) -> bool:
         return settings.enable_nse_provider
     if name == "demo":
         return settings.demo_data_allowed
+    if name.endswith("_archives"):
+        return settings.enable_exchange_archives
+    if name in BROKER_CLASSES:
+        return settings.broker_is_configured(name)
     return True
 
 
@@ -271,6 +291,14 @@ def _chain_key(capability: str) -> str:
         "futures_chain": "option_chain",
         "news": "news",
         "ipos": "ipo",
+        "bhavcopy": "eod",
+        "delivery": "eod",
+        "bulk_deals": "eod",
+        "block_deals": "eod",
+        "fii_dii": "eod",
+        "macro_series": "macro",
+        "policy_rates": "macro",
+        "fund_navs": "macro",
     }.get(capability, "quote")
 
 

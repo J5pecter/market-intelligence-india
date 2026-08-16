@@ -677,6 +677,37 @@ def end_of_day_snapshot(db: Session, run) -> Dict[str, Any]:
             "note": "Equal-weighted average, not market-cap weighted."}
 
 
+@_job("exchange_eod_ingest")
+def exchange_eod_ingest(db: Session, run) -> Dict[str, Any]:
+    """Store the exchange's published EOD files for the latest session.
+
+    Runs after the archives are posted. Each dataset records its own audit row,
+    so a day missing from the history can always be attributed either to the
+    exchange not publishing or to this job not running.
+    """
+    from app.services.eod_ingest import ingest_session
+
+    runs = ingest_session(db)
+    received = sum(r.rows_seen for r in runs)
+    saved = sum(r.rows_written for r in runs)
+    failures = [f"{r.dataset}: {r.message}" for r in runs if r.status == "FAILED"]
+
+    run["provider"] = "nse_archives"
+    run["records_received"] = received
+    run["records_saved"] = saved
+    if failures:
+        run["errors"] = failures
+
+    return {
+        "datasets": {r.dataset: r.status for r in runs},
+        "rows_written": saved,
+        # An empty block-deal register is a normal market outcome, so it is
+        # reported rather than treated as a failure.
+        "empty": [r.dataset for r in runs if r.status == "EMPTY"],
+        "failed": [r.dataset for r in runs if r.status == "FAILED"],
+    }
+
+
 JOB_REGISTRY: Dict[str, Callable[..., Dict[str, Any]]] = {
     "instrument_sync": instrument_sync,
     "quote_refresh": quote_refresh,
@@ -686,4 +717,5 @@ JOB_REGISTRY: Dict[str, Callable[..., Dict[str, Any]]] = {
     "research_status_update": research_status_update,
     "alert_engine": alert_engine,
     "end_of_day_snapshot": end_of_day_snapshot,
+    "exchange_eod_ingest": exchange_eod_ingest,
 }

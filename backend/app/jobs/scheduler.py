@@ -89,6 +89,21 @@ def start_scheduler() -> Optional[BackgroundScheduler]:
         id="end_of_day_snapshot", replace_existing=True,
     )
 
+    # Exchange archives are posted about an hour after the close; 18:30 IST
+    # leaves margin without pushing into the next day's pre-open.
+    scheduler.add_job(
+        tasks.exchange_eod_ingest,
+        CronTrigger(day_of_week="mon-fri", hour=18, minute=30, timezone=IST),
+        id="exchange_eod_ingest", replace_existing=True,
+    )
+    # Second attempt for the days the exchange publishes late. Ingestion is
+    # idempotent, so a successful first run makes this a no-op.
+    scheduler.add_job(
+        tasks.exchange_eod_ingest,
+        CronTrigger(day_of_week="mon-fri", hour=21, minute=0, timezone=IST),
+        id="exchange_eod_ingest_retry", replace_existing=True,
+    )
+
     # Weekly instrument master sync.
     scheduler.add_job(
         tasks.instrument_sync,

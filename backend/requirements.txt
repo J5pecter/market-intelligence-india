@@ -28,7 +28,11 @@ scipy==1.15.0
 # --- Data providers (all free tiers / public endpoints) ------------------
 requests==2.32.3
 httpx==0.28.1
-yfinance==0.2.51
+# 0.2.x broke against Yahoo's current API: fast_info returns silent Nones
+# rather than raising, which surfaced as a phantom "no price" for stocks that
+# were trading fine. Quotes now use the chart endpoint directly (see
+# providers/yahoo.py); yfinance is still used for history and fundamentals.
+yfinance==1.6.0
 feedparser==6.0.11
 beautifulsoup4==4.12.3
 lxml==5.3.0

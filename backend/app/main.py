@@ -13,8 +13,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.middleware.gzip import GZipMiddleware
 
-from app.api.routes import (admin, auth, derivatives, documents, ipo,
-                            market, research, stocks, system, user_data)
+from app.api.routes import (admin, auth, derivatives, documents, exchange,
+                            ipo, market, research, stocks, system, user_data)
 from app.core.compliance import load_compliance
 from app.core.config import settings
 from app.core.logging import configure_logging
@@ -139,7 +139,7 @@ async def unhandled_handler(request: Request, exc: Exception):
 
 
 for router in (auth.router, market.router, stocks.router, derivatives.router,
-               ipo.router, research.router, documents.router,
+               ipo.router, research.router, documents.router, exchange.router,
                user_data.router, system.router, admin.router):
     app.include_router(router, prefix=settings.api_prefix)
 

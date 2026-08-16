@@ -135,8 +135,22 @@ def verification_badge() -> Optional[Dict[str, str]]:
 
 
 def platform_descriptor() -> str:
+    from app.core.config import settings
+
     cfg = load_compliance()
     if verification_badge() is None:
+        # A single-operator deployment is a private research desk, not
+        # something offered to the public. Saying so is more accurate than
+        # "educational platform", which implies an audience that does not
+        # exist. It is not a weaker claim: an unregistered entity still cannot
+        # advise anyone, and the badge above is still absent.
+        if settings.personal_use_mode:
+            owner = settings.operator_name.strip()
+            return (
+                f"Private market research desk"
+                + (f" - {owner}" if owner else "")
+                + " (single operator, not a service offered to others)"
+            )
         return cfg.get(
             "platform_descriptor", "Educational / informational market research platform"
         )
