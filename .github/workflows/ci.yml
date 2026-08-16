@@ -131,3 +131,65 @@ jobs:
             exit 1
           fi
           echo "No committed secret detected."
+
+  deploy:
+    name: Deploy · Render
+    runs-on: ubuntu-latest
+    # Render is connected to this repo by its public URL, which carries no
+    # GitHub webhook - so Render's own "auto-deploy on commit" can never fire.
+    # This job replaces it, and improves on it: Render would have deployed
+    # every push regardless of whether the suite was green, whereas this runs
+    # only after all three checks pass.
+    needs: [backend, frontend, secrets]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    concurrency:
+      group: render-deploy
+      cancel-in-progress: false
+    steps:
+      - name: Trigger the deploy
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          set -euo pipefail
+          if [ -z "${HOOK:-}" ]; then
+            echo "::error::RENDER_DEPLOY_HOOK is not set. Add it under" \
+                 "Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          # -o/-w rather than plain curl: the hook URL carries a key, and the
+          # response body echoes the deploy id, so neither is printed.
+          code=$(curl -fsS -X POST "$HOOK" -o response.json -w '%{http_code}')
+          echo "Render accepted the deploy request (HTTP $code)."
+          python -c "
+          import json
+          with open('response.json') as fh:
+              payload = json.load(fh)
+          deploy = payload.get('deploy') or {}
+          print('deploy id:', deploy.get('id', 'unknown'))
+          print('status:   ', deploy.get('status', 'queued'))
+          "
+
+      - name: Wait for the new build to go live
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${API_BASE_URL:-}" ]; then
+            echo "API_BASE_URL not set - skipping the post-deploy check."
+            echo "The deploy was still triggered."
+            exit 0
+          fi
+          # A build takes a few minutes on the free tier, and the instance may
+          # also be cold. Poll rather than sleeping a fixed guess.
+          for i in $(seq 1 40); do
+            sleep 20
+            code=$(curl -s -m 30 -o /dev/null -w '%{http_code}' \
+              "$API_BASE_URL/api/health" || true)
+            echo "attempt $i: HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "API is serving again."
+              exit 0
+            fi
+          done
+          echo "::warning::API did not respond 200 within the window."
+          echo "The deploy may still be building - check the Render dashboard."

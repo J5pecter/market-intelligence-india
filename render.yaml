@@ -11,6 +11,13 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
+    # This service is linked by public repository URL, which carries no GitHub
+    # webhook - so Render's own auto-deploy silently never fires no matter what
+    # it is set to. Deploys are driven by the deploy hook from the `deploy` job
+    # in .github/workflows/ci.yml, which has the advantage of running only
+    # after the test suite passes. Leaving this "on" would just be a setting
+    # that lies about what happens.
+    autoDeploy: false
     envVars:
       - key: APP_ENV
         # PRODUCTION refuses to serve seeded rows at all, rather than merely
