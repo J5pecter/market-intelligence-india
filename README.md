@@ -3,6 +3,16 @@
 An evidence-first research and market-intelligence terminal for NSE and BSE
 equities, indices, futures, options and IPOs.
 
+**Live:** [market-intelligence-india.vercel.app](https://market-intelligence-india.vercel.app) ·
+**API:** [`/api/health`](https://market-intelligence-api-lmwi.onrender.com/api/health) ·
+[API docs](https://market-intelligence-api-lmwi.onrender.com/docs) ·
+[Project page](https://j5pecter.github.io/market-intelligence-india/)
+
+> The deployment runs with `APP_ENV=DEMO`, so it serves the seeded sample
+> dataset. Every row is badged `DEMO` in the UI and in the API payload. Both
+> tiers are free, so the API sleeps after 15 minutes of inactivity — the first
+> request after a nap can take up to a minute.
+
 **This is a research platform, not a signal service.** It does not predict
 prices, it does not guarantee outcomes, and it is not investment advice. Its
 whole design goal is that you can always answer the question *"why does it say
@@ -354,6 +364,8 @@ npm run build
 ## Deployment
 
 Designed for free tiers, with their limits handled rather than ignored.
+
+The live deployment uses exactly this setup.
 
 **Backend — Render / Railway / Fly**
 

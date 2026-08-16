@@ -90,9 +90,10 @@
       behind it.
     </p>
     <p>
-      <a class="btn primary" href="https://github.com/REPLACE_OWNER/REPLACE_REPO">Source on GitHub</a>
+      <a class="btn primary" href="https://market-intelligence-india.vercel.app">Open the live terminal</a>
+      <a class="btn" href="https://github.com/REPLACE_OWNER/REPLACE_REPO">Source on GitHub</a>
+      <a class="btn" href="https://market-intelligence-api-lmwi.onrender.com/docs">API docs</a>
       <a class="btn" href="#run">Run it locally</a>
-      <a class="btn" href="#deploy">Deploy it</a>
     </p>
   </div>
 </header>
@@ -100,11 +101,16 @@
 <div class="wrap">
 
   <div class="notice">
-    <strong>This page is documentation, not the application.</strong>
-    GitHub Pages serves static files only, and this platform needs a Python API
-    and a database to do anything useful. The
-    <a href="#deploy">deployment section</a> covers hosting the real thing on
-    free tiers. Nothing here — or in the application — is investment advice.
+    <strong>This page is documentation. The application itself is live at</strong>
+    <a href="https://market-intelligence-india.vercel.app">market-intelligence-india.vercel.app</a>, with its API on Render.
+    GitHub Pages serves static files only, so it cannot run the platform — the
+    Python API and database are hosted separately.
+    <br><br>
+    The live deployment runs with <code>APP_ENV=DEMO</code> and serves the
+    seeded sample dataset; every row is badged <code>DEMO</code> in the UI and
+    in the API payload. Both tiers are free, so the API sleeps after 15 minutes
+    of inactivity and the first request after a nap can take up to a minute.
+    Nothing here — or in the application — is investment advice.
   </div>
 
   <h2>What it does</h2>
