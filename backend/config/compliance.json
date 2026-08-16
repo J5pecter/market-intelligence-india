@@ -1,0 +1,90 @@
+{
+  "_readme": [
+    "This file is the single source of truth for how the platform describes itself.",
+    "The application NEVER invents a registration number. If sebi_registration_number",
+    "is null, the UI shows 'Educational / informational market research platform' and",
+    "no verification badge of any kind is rendered.",
+    "Edit this file (or use the admin panel) only with a legal reviewer's sign-off,",
+    "and record who reviewed it in `legal_reviewer` and `last_reviewed_date`."
+  ],
+
+  "entity_name": "Market Intelligence India",
+  "legal_entity_name": null,
+  "entity_type": "UNREGISTERED",
+
+  "sebi_registration_status": "NOT_REGISTERED",
+  "sebi_registration_number": null,
+  "research_analyst_status": "NOT_REGISTERED",
+  "research_analyst_number": null,
+  "investment_adviser_status": "NOT_REGISTERED",
+  "investment_adviser_number": null,
+  "broker_status": "NOT_APPLICABLE",
+  "broker_registration_number": null,
+  "exchange_membership_status": "NONE",
+  "exchange_memberships": [],
+
+  "disclaimer_version": "1.0.0",
+  "effective_date": null,
+  "last_reviewed_date": null,
+  "legal_reviewer": null,
+
+  "platform_descriptor": "Educational / informational market research platform",
+
+  "primary_disclaimer": "Information displayed on this platform is for informational and educational purposes only and should not be construed as investment advice, research advice, solicitation, recommendation, or a guarantee of returns. Market investments, including derivatives, involve risk and may result in partial or complete loss of capital. Users should independently evaluate investments and consider consulting an appropriately qualified and registered professional.",
+
+  "derivatives_disclaimer": "Derivatives can magnify both gains and losses. The margin or premium paid can differ greatly from the notional exposure taken, and losses are not limited to the amount initially paid in every strategy. Positions can move against you overnight through gaps, and options lose value through time decay even when the underlying does not move.",
+
+  "generated_signal_disclaimer": "Signals shown here are calculated from the data listed in each evidence panel. They are analytical scenarios, not recommendations, and they are not a forecast. Historical behaviour of similar configurations does not determine future outcomes.",
+
+  "external_research_disclaimer": "Research calls attributed to a third party are reproduced as published by that source, with attribution and timestamp. This platform does not originate them, does not endorse them, and may not have verified the underlying analysis.",
+
+  "gmp_disclaimer": "Grey Market Premium is an unofficial, unregulated indicator quoted by private dealers. It is not a price discovered on any exchange, it is not a listing price, and it can change or disappear without notice. Treat it as sentiment colour only.",
+
+  "source_urls": [
+    {
+      "name": "SEBI (Research Analysts) Regulations, 2014",
+      "url": "https://www.sebi.gov.in/legal/regulations/",
+      "note": "Check SEBI's site for the current consolidated text and the latest amendment date before relying on this reference."
+    },
+    {
+      "name": "SEBI Master Circular for Research Analysts",
+      "url": "https://www.sebi.gov.in/sebiweb/home/HomeAction.do?doListing=yes&sid=1&ssid=7&smid=0",
+      "note": "Master circulars are reissued periodically; verify you are reading the current one."
+    },
+    {
+      "name": "SEBI (Investment Advisers) Regulations, 2013",
+      "url": "https://www.sebi.gov.in/legal/regulations/",
+      "note": "Check SEBI's site for the current consolidated text."
+    },
+    {
+      "name": "SEBI investor education material on equity derivatives",
+      "url": "https://investor.sebi.gov.in/",
+      "note": "Source for any statistic quoted about individual F&O trader outcomes. Quote the study period alongside the figure."
+    }
+  ],
+
+  "statistical_claims": [
+    {
+      "id": "fno-individual-losses",
+      "claim": "A SEBI study of individual traders in the equity F&O segment found that 9 out of 10 individual traders incurred net losses.",
+      "study_period": "FY2018-19 and FY2021-22",
+      "source_name": "SEBI investor education material citing SEBI's study of individual traders in the equity F&O segment",
+      "source_url": "https://investor.sebi.gov.in/",
+      "verified_by": null,
+      "verified_on": null,
+      "display_rule": "Always show the study period next to the figure. Do not present it as a current-year statistic. Do not display at all if verified_on is null and the deployment is PRODUCTION."
+    }
+  ],
+
+  "prohibited_claims": [
+    "SEBI Verified",
+    "SEBI Certified",
+    "SEBI Approved",
+    "SEBI Registered",
+    "Guaranteed returns",
+    "Assured profit",
+    "Risk-free",
+    "Sure shot",
+    "100% accurate"
+  ]
+}

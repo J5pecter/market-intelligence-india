@@ -1,0 +1,54 @@
+# ---------------------------------------------------------------------------
+# Market Intelligence India - backend dependencies
+# Free / open-source only. No paid SDKs required to run the MVP.
+# ---------------------------------------------------------------------------
+
+# --- Web framework -------------------------------------------------------
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+
+# --- Validation / settings ----------------------------------------------
+pydantic==2.10.5
+pydantic-settings==2.7.1
+email-validator==2.2.0
+
+# --- Database ------------------------------------------------------------
+SQLAlchemy==2.0.36
+alembic==1.14.0
+# psycopg[binary] is only needed when DATABASE_URL points at PostgreSQL.
+# SQLite (the default) needs nothing extra.
+psycopg[binary]==3.2.3
+
+# --- Analytics -----------------------------------------------------------
+numpy==2.2.1
+pandas==2.2.3
+scipy==1.15.0
+
+# --- Data providers (all free tiers / public endpoints) ------------------
+requests==2.32.3
+httpx==0.28.1
+yfinance==0.2.51
+feedparser==6.0.11
+beautifulsoup4==4.12.3
+lxml==5.3.0
+
+# --- Document extraction (pure Python, no system deps) -------------------
+pypdf==5.1.0
+
+# --- Auth ----------------------------------------------------------------
+PyJWT==2.10.1
+# Password hashing uses hashlib.pbkdf2_hmac from the stdlib - no bcrypt build
+# toolchain required on Windows.
+
+# --- Scheduling / cache --------------------------------------------------
+APScheduler==3.11.0
+redis==5.2.1          # optional - falls back to an in-process cache
+
+# --- Reporting -----------------------------------------------------------
+openpyxl==3.1.5
+reportlab==4.2.5
+
+# --- Testing -------------------------------------------------------------
+pytest==8.3.4
+pytest-asyncio==0.25.2

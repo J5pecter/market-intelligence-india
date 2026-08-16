@@ -1,0 +1,41 @@
+{
+  "_readme": "Brand system. Nothing here is hard-coded in components - the frontend reads /api/config/branding and injects these as CSS custom properties.",
+
+  "name": "Market Intelligence India",
+  "short_name": "MII",
+  "tagline": "Evidence-first research for Indian markets",
+  "domain": "",
+  "logo_url": null,
+  "logo_mark_text": "MI",
+  "favicon_url": null,
+
+  "colors": {
+    "background": "#080b11",
+    "surface": "#0e131b",
+    "surface_raised": "#141b26",
+    "border": "#1e2836",
+    "border_strong": "#2b3849",
+    "text_primary": "#e6edf6",
+    "text_secondary": "#8fa1b8",
+    "text_muted": "#5d6f87",
+    "accent": "#2dd4bf",
+    "accent_muted": "#0f3b38",
+    "positive": "#22c55e",
+    "negative": "#f43f5e",
+    "warning": "#f59e0b",
+    "info": "#38bdf8",
+    "neutral": "#64748b"
+  },
+
+  "typography": {
+    "sans": "\"Inter\", \"Segoe UI\", system-ui, -apple-system, sans-serif",
+    "mono": "\"JetBrains Mono\", \"SF Mono\", \"Consolas\", ui-monospace, monospace",
+    "base_size_px": 13,
+    "density": "compact"
+  },
+
+  "footer_text": "Market data is delayed or sourced from public endpoints unless a licensed provider is configured. This platform does not provide investment advice.",
+
+  "support_email": "",
+  "default_theme": "dark"
+}

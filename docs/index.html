@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Market Intelligence India</title>
+<meta name="description" content="An evidence-first research and market-intelligence terminal for NSE and BSE. Not investment advice." />
+<style>
+  :root {
+    --bg: #080b11; --surface: #0e131b; --raised: #141b26;
+    --line: #1e2836; --line-strong: #2b3849;
+    --ink: #e6edf6; --ink-2: #8fa1b8; --ink-3: #5d6f87;
+    --accent: #2dd4bf; --pos: #22c55e; --neg: #f43f5e; --warn: #f59e0b;
+    --sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --mono: "JetBrains Mono", "SF Mono", Consolas, ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: var(--sans); font-size: 15px; line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 20px; }
+  header { border-bottom: 1px solid var(--line); padding: 48px 0 36px; }
+  .mark {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; border-radius: 7px;
+    background: var(--accent); color: var(--bg);
+    font-weight: 800; font-size: 13px; letter-spacing: .5px;
+  }
+  h1 { font-size: 30px; margin: 18px 0 6px; letter-spacing: -.02em; }
+  h2 { font-size: 19px; margin: 40px 0 12px; letter-spacing: -.01em; }
+  h3 { font-size: 15px; margin: 22px 0 8px; color: var(--ink); }
+  p { color: var(--ink-2); margin: 10px 0; }
+  .lede { font-size: 17px; color: var(--ink-2); max-width: 68ch; }
+  a { color: var(--accent); }
+  code, .mono { font-family: var(--mono); font-size: .88em; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1px solid var(--line-strong); background: var(--raised);
+    color: var(--ink-2); border-radius: 5px;
+    padding: 3px 9px; font-size: 12px; margin: 3px 4px 3px 0;
+  }
+  .chip.warn { border-color: rgba(245,158,11,.4); background: rgba(245,158,11,.1); color: var(--warn); }
+  .notice {
+    border: 1px solid rgba(245,158,11,.3); background: rgba(245,158,11,.06);
+    color: var(--warn); border-radius: 8px; padding: 14px 16px;
+    font-size: 13.5px; line-height: 1.6; margin: 22px 0;
+  }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin: 16px 0; }
+  .card { border: 1px solid var(--line); background: var(--surface); border-radius: 9px; padding: 16px 18px; }
+  .card h3 { margin-top: 0; }
+  .card p { font-size: 13.5px; margin: 6px 0 0; }
+  pre {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 8px; padding: 14px 16px; overflow-x: auto;
+    font-family: var(--mono); font-size: 12.5px; color: var(--ink-2);
+    line-height: 1.55;
+  }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13.5px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--ink-3); font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; font-weight: 600; }
+  td { color: var(--ink-2); }
+  td strong { color: var(--ink); font-weight: 600; }
+  ul { color: var(--ink-2); padding-left: 20px; }
+  li { margin: 6px 0; }
+  .btn {
+    display: inline-block; border: 1px solid var(--line-strong);
+    background: var(--raised); color: var(--ink); border-radius: 6px;
+    padding: 9px 15px; text-decoration: none; font-size: 13.5px;
+    font-weight: 500; margin: 6px 8px 6px 0;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { background: var(--accent); color: var(--bg); border-color: transparent; font-weight: 600; }
+  .btn.primary:hover { opacity: .88; color: var(--bg); }
+  footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 26px 0 60px; font-size: 12.5px; color: var(--ink-3); }
+  footer p { color: var(--ink-3); font-size: 12.5px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <span class="mark">MI</span>
+    <h1>Market Intelligence India</h1>
+    <p class="lede">
+      An evidence-first research and market-intelligence terminal for NSE and
+      BSE equities, indices, futures, options and IPOs. Every number it shows
+      carries the calculation, the source, the timestamp and the data status
+      behind it.
+    </p>
+    <p>
+      <a class="btn primary" href="https://github.com/REPLACE_OWNER/REPLACE_REPO">Source on GitHub</a>
+      <a class="btn" href="#run">Run it locally</a>
+      <a class="btn" href="#deploy">Deploy it</a>
+    </p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="notice">
+    <strong>This page is documentation, not the application.</strong>
+    GitHub Pages serves static files only, and this platform needs a Python API
+    and a database to do anything useful. The
+    <a href="#deploy">deployment section</a> covers hosting the real thing on
+    free tiers. Nothing here — or in the application — is investment advice.
+  </div>
+
+  <h2>What it does</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Evidence chains, not verdicts</h3>
+      <p>Every analytical output is a list of items carrying metric, value,
+      weight, calculation, interpretation, source and timestamp. The UI renders
+      "Why?" panels mechanically from those fields, so it cannot display a
+      conclusion the data does not contain.</p>
+    </div>
+    <div class="card">
+      <h3>Mixed is a legitimate answer</h3>
+      <p>When technicals and fundamentals disagree, the confidence engine
+      reports a conflict and the setup generator <em>refuses</em> to produce a
+      direction, rather than manufacturing one.</p>
+    </div>
+    <div class="card">
+      <h3>Status is derived, never permanent</h3>
+      <p>A research card's badge is recomputed from live price on every read.
+      A call whose price has fallen below its entry reads "Not activated" with
+      a negative achieved figure — it never keeps saying BUY.</p>
+    </div>
+    <div class="card">
+      <h3>Document extraction with citations</h3>
+      <p>Reads filings and offer documents, handles Indian number formats and
+      lakh/crore units, and writes <em>citations</em> — page, quote, confidence
+      and its reasons. Nothing enters the fundamentals tables until a human
+      approves it.</p>
+    </div>
+    <div class="card">
+      <h3>Provenance on everything</h3>
+      <p>Values travel in an envelope stamped LIVE, DELAYED, STALE, ESTIMATED,
+      MANUAL, UNVERIFIED, DEMO or UNAVAILABLE. Stale data is never redrawn as
+      live, and seeded demo rows are badged everywhere they appear.</p>
+    </div>
+    <div class="card">
+      <h3>Compliance as configuration</h3>
+      <p>With no registration configured, the platform renders no verification
+      badge and rejects any text containing "guaranteed returns", "risk-free"
+      or similar — enforced by the API before a record can save.</p>
+    </div>
+  </div>
+
+  <h2>Modules</h2>
+  <table>
+    <tr><th>Area</th><th>What you get</th></tr>
+    <tr><td><strong>Dashboard</strong></td><td>Indices, breadth, sector performance, movers, breakouts, flows, active research, IPO watch, events, news</td></tr>
+    <tr><td><strong>Stocks</strong></td><td>Chart with overlays, technical evidence chain, documented quality score, news impact scoring, filings, corporate actions</td></tr>
+    <tr><td><strong>F&amp;O</strong></td><td>Option chain with OI bars, Black-Scholes-Merton Greeks, PCR, max pain, build-up classification, IV skew, futures basis</td></tr>
+    <tr><td><strong>IPO</strong></td><td>GMP history, subscription, extracted financials, six-component research score, SWOT with evidence, application simulator</td></tr>
+    <tr><td><strong>Documents</strong></td><td>Upload filings, extract figures and risks with page-level citations, review queue before anything becomes a fact</td></tr>
+    <tr><td><strong>Scanners</strong></td><td>25 built-in technical, fundamental and combined screens plus a custom filter builder</td></tr>
+    <tr><td><strong>Backtesting</strong></td><td>No-look-ahead engine, pessimistic intrabar resolution, full costs, in-sample vs out-of-sample, walk-forward</td></tr>
+    <tr><td><strong>Personal</strong></td><td>Watchlists, 20 alert condition types, paper trading, portfolio with XIRR and concentration analysis</td></tr>
+    <tr><td><strong>Governance</strong></td><td>Compliance page, methodology documents, append-only audit log, admin panel, system health</td></tr>
+  </table>
+
+  <h2 id="run">Running it locally</h2>
+  <p>Python 3.11+ and Node 20+. Nothing else — the default configuration uses
+  SQLite and an in-process cache, and the demo dataset seeds itself on first
+  start.</p>
+
+<pre># Backend
+cd backend
+python -m venv .venv &amp;&amp; .venv/Scripts/activate    # Windows
+pip install -r requirements.txt
+cp .env.example .env
+python -m uvicorn app.main:app --reload
+
+# Frontend, in a second terminal
+cd frontend
+npm install
+npm run dev</pre>
+
+  <p>Open <code>http://localhost:3000</code>. The first account you register
+  becomes the administrator — no default password ships with this project.</p>
+
+  <h2 id="deploy">Deploying the real thing</h2>
+  <p>Three free-tier pieces. GitHub hosts the source and runs CI; it cannot run
+  the application itself.</p>
+  <table>
+    <tr><th>Piece</th><th>Where</th><th>Notes</th></tr>
+    <tr><td><strong>Frontend</strong></td><td>Vercel or Cloudflare Pages</td><td>Set <code>BACKEND_URL</code>; <code>/api/*</code> is rewritten to it, so the browser only talks to your own origin</td></tr>
+    <tr><td><strong>Backend</strong></td><td>Render or Railway</td><td><code>render.yaml</code> is in the repo. On a tier that sleeps, set <code>ENABLE_SCHEDULER=false</code> and drive jobs by external cron</td></tr>
+    <tr><td><strong>Database</strong></td><td>Supabase or Neon</td><td><code>postgresql+psycopg://…</code> in <code>DATABASE_URL</code></td></tr>
+    <tr><td><strong>Cache</strong></td><td>Upstash (optional)</td><td>Without Redis the cache and rate limiter are per-worker</td></tr>
+  </table>
+
+  <h2>Honest limitations</h2>
+  <p>A research tool that hides its own gaps is worse than useless.</p>
+  <ul>
+    <li><strong>Nothing is real-time</strong> on the default free providers. Every quote is badged DELAYED or STALE.</li>
+    <li><strong>Option chains need a source.</strong> The NSE adapter is off by default because NSE's terms restrict automated access; the platform does not work around blocks.</li>
+    <li><strong>No FII/DII flow, index weights or consensus estimates</strong> in the free configuration. Those panels say so rather than estimating.</li>
+    <li><strong>No OCR.</strong> Scanned filings yield nothing, and the extractor reports that instead of extracting silently.</li>
+    <li><strong>No AI chat assistant and no WebSockets.</strong> The structured evidence exists; the conversational and streaming layers do not.</li>
+    <li><strong>Backtests are daily-bar, long-only, single-position.</strong></li>
+    <li><strong>This deployment holds no registration.</strong> It is an informational and educational research platform, and says so on every page.</li>
+  </ul>
+
+  <h2>Methodology</h2>
+  <p>Nothing is a black box. Seven documents describe every formula the platform
+  uses, and the running application serves them at
+  <code>/api/methodology</code>:</p>
+  <p>
+    <span class="chip">Principles</span>
+    <span class="chip">Technical analysis</span>
+    <span class="chip">Options, Greeks and futures</span>
+    <span class="chip">Risk and confidence</span>
+    <span class="chip">Fundamentals, news and IPO</span>
+    <span class="chip">Backtesting</span>
+    <span class="chip">Document extraction</span>
+  </p>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <p>
+      <span class="chip warn">Educational / informational market research platform</span>
+    </p>
+    <p>
+      Information produced by this platform is for informational and
+      educational purposes only. It does not constitute investment advice,
+      research advice, solicitation, recommendation, or a guarantee of returns.
+      Market investments, including derivatives, involve risk and may result in
+      partial or complete loss of capital. Evaluate investments independently
+      and consider consulting an appropriately qualified and registered
+      professional.
+    </p>
+    <p>Review each data provider's terms before using it, particularly in a
+    commercial deployment.</p>
+  </div>
+</footer>
+</body>
+</html>

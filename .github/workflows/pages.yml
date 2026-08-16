@@ -1,0 +1,45 @@
+name: Pages
+
+# Publishes the static project page in docs/ to GitHub Pages.
+#
+# GitHub Pages serves static files only, so it cannot run this platform - the
+# application needs a Python API and a database. What ships here is the project
+# documentation; the app itself deploys to Vercel + Render (see README).
+
+on:
+  push:
+    branches: [main]
+    paths: ["docs/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Point the page at this repository
+        run: |
+          sed -i "s|REPLACE_OWNER/REPLACE_REPO|${GITHUB_REPOSITORY}|g" docs/index.html
+          # Jekyll would otherwise ignore files it does not recognise.
+          touch docs/.nojekyll
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

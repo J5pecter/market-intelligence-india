@@ -1,0 +1,39 @@
+# One-click backend deploy: https://render.com/deploy
+#
+# The database is provisioned alongside the service. Set SECRET_KEY yourself -
+# `generateValue` produces a strong one, but review it before going live.
+services:
+  - type: web
+    name: market-intelligence-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: APP_ENV
+        value: PRODUCTION          # demo rows become unservable
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: market-intelligence-db
+          property: connectionString
+      - key: ENABLE_SCHEDULER
+        # Free instances sleep, so in-process scheduling is unreliable.
+        # Drive jobs with an external cron hitting /api/admin/jobs/{job}/run.
+        value: "false"
+      - key: ENABLE_NSE_PROVIDER
+        # Opt in only after reviewing https://www.nseindia.com/terms-conditions
+        value: "false"
+      - key: CORS_ORIGINS
+        sync: false               # set to your frontend origin
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+
+databases:
+  - name: market-intelligence-db
+    plan: free
+    databaseName: market_intel
+    user: market

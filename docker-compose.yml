@@ -1,0 +1,40 @@
+# Local stack with PostgreSQL and Redis, for when SQLite and the in-process
+# cache stop being enough. The default `npm run dev` + uvicorn setup needs
+# neither of these.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: market
+      POSTGRES_PASSWORD: market
+      POSTGRES_DB: market_intel
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U market"]
+      interval: 5s
+      retries: 10
+
+  cache:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://market:market@db:5432/market_intel
+      REDIS_URL: redis://cache:6379/0
+      APP_ENV: ${APP_ENV:-LOCAL}
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-your-env-file}
+      CORS_ORIGINS: http://localhost:3000
+    ports: ["8000:8000"]
+    depends_on:
+      db: {condition: service_healthy}
+      cache: {condition: service_healthy}
+
+volumes:
+  pgdata:

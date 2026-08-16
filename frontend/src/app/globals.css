@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Defaults mirror config/branding.json. The real values are injected as inline
+ * styles on <html> by the server layout, so a rebrand needs no rebuild.
+ */
+:root {
+  --c-bg: 8 11 17;
+  --c-surface: 14 19 27;
+  --c-raised: 20 27 38;
+  --c-border: 30 40 54;
+  --c-border-strong: 43 56 73;
+  --c-text: 230 237 246;
+  --c-text-2: 143 161 184;
+  --c-text-3: 93 111 135;
+  --c-accent: 45 212 191;
+  --c-accent-soft: 15 59 56;
+  --c-pos: 34 197 94;
+  --c-neg: 244 63 94;
+  --c-warn: 245 158 11;
+  --c-info: 56 189 248;
+  --c-neutral: 100 116 139;
+
+  --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Consolas, ui-monospace, monospace;
+}
+
+html,
+body {
+  background: rgb(var(--c-bg));
+  color: rgb(var(--c-text));
+  font-family: var(--font-sans);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Compact terminal scrollbars that stay visible enough to grab. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--c-border-strong)) transparent;
+}
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgb(var(--c-border-strong));
+  border-radius: 6px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@layer components {
+  .card {
+    @apply rounded-lg border border-line bg-surface;
+  }
+  .card-head {
+    @apply flex items-center justify-between gap-3 border-b border-line px-3.5 py-2.5;
+  }
+  .card-title {
+    @apply text-2xs font-semibold uppercase tracking-[0.09em] text-ink-dim;
+  }
+  .num {
+    @apply font-mono tabular-nums;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-2xs font-medium;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded border border-line
+           bg-raised px-2.5 py-1.5 text-xs font-medium text-ink transition-colors
+           hover:border-line-strong hover:bg-line disabled:cursor-not-allowed
+           disabled:opacity-50;
+  }
+  .btn-accent {
+    @apply border-transparent bg-accent text-[rgb(var(--c-bg))] hover:bg-accent/85;
+  }
+  .field {
+    @apply w-full rounded border border-line bg-bg px-2.5 py-1.5 text-xs text-ink
+           outline-none placeholder:text-ink-muted focus:border-accent;
+  }
+  .th {
+    @apply whitespace-nowrap px-2.5 py-2 text-left text-2xs font-semibold
+           uppercase tracking-wider text-ink-muted;
+  }
+  .td {
+    @apply whitespace-nowrap px-2.5 py-2 text-xs;
+  }
+  .scroll-x {
+    @apply overflow-x-auto;
+  }
+}
+
+/* Focus rings must survive the dark theme - accessibility, not decoration. */
+:focus-visible {
+  outline: 2px solid rgb(var(--c-accent));
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
