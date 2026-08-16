@@ -579,3 +579,38 @@ corrects it rather than duplicating it.
 whether the delivery percentile is usable yet. Every dataset writes an audit row
 even when nothing is stored, because "the exchange published nothing" and "the
 job never ran" look identical in the data and need opposite responses.
+
+
+## Deployments
+
+Pushing to `main` deploys the backend automatically — but not via Render's
+own auto-deploy, which cannot work here.
+
+The Render service is linked to this repo by its **public URL**, and that
+connection carries no GitHub webhook. Its build log says so plainly: *"we
+don't have access to your repo, but we'll try to clone it anyway."* So
+Render's `Auto-Deploy: On Commit` was set and silently never fired — commits
+went live only when deployed by hand. It is now set to **Off** in both the
+dashboard and `render.yaml`, because a setting that lies about what happens is
+worse than no setting.
+
+Instead, the `deploy` job in `.github/workflows/ci.yml` POSTs Render's deploy
+hook, gated on `needs: [backend, frontend, secrets]`. That is strictly better
+than the webhook it replaces: Render would have deployed every push regardless
+of whether the suite was green, whereas nothing reaches production now until
+all three checks pass. The job then polls `/api/health` rather than sleeping a
+fixed guess, since a free instance can be cold as well as building.
+
+Required repository secrets:
+
+| Secret | Used by | Notes |
+| --- | --- | --- |
+| `RENDER_DEPLOY_HOOK` | `ci.yml` | Render → service → Settings → Deploy Hook. Rotate with **Regenerate hook**. |
+| `API_BASE_URL` | `ci.yml`, `ingest.yml` | the deployed API origin |
+| `API_EMAIL`, `API_PASSWORD` | `ingest.yml` | an ADMIN user, for the nightly EOD ingestion |
+
+The hook URL is a credential. `curl` writes its response to a file rather than
+stdout so neither the URL nor the deploy id lands in a public build log.
+
+The frontend is separate: Vercel has a proper GitHub connection, so it
+auto-deploys on push with no help from CI.
