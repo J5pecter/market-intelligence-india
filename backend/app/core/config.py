@@ -130,6 +130,12 @@ class Settings(BaseSettings):
     bootstrap_admin_email: str = "admin@example.com"
     bootstrap_admin_password: str = ""
 
+    # Service credential for the scheduled EOD ingestion. A machine job should
+    # not be carrying a human's login: a password in CI can sign in, read
+    # everything and change anything, whereas this opens exactly one endpoint
+    # and can be rotated without disturbing any user account.
+    ingest_token: str = ""
+
     @field_validator("database_url", mode="after")
     @classmethod
     def _normalise_database_url(cls, value: str) -> str:

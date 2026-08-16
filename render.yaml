@@ -56,6 +56,11 @@ services:
         value: worldbank,rbi
       - key: CORS_ORIGINS
         sync: false               # set to your frontend origin
+      - key: INGEST_TOKEN
+        # Service credential for the scheduled EOD ingestion. Must match
+        # the INGEST_TOKEN repository secret. sync:false keeps the value
+        # in the dashboard and out of this file.
+        sync: false
       # Broker credentials are deliberately absent from this blueprint. Add
       # them in the Render dashboard so they never touch the repository.
       - key: PYTHON_VERSION

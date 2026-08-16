@@ -436,3 +436,63 @@ class TestProductionRefusesDemoRows:
                 body = response.text
                 assert '"is_demo":true' not in body.lower().replace(" ", ""), \
                     f"{path} served a seeded row in PRODUCTION"
+
+
+# --------------------------------------------------------------------------
+# ingestion authorisation
+# --------------------------------------------------------------------------
+
+
+class TestIngestAuthorisation:
+    """The scheduled job authenticates with a service token, not a human
+    login. A password in CI could sign in and do everything; the token opens
+    exactly one endpoint and rotates without touching any user account."""
+
+    def _client(self):
+        from fastapi.testclient import TestClient
+        import app.main as main_module
+        return TestClient(main_module.app)
+
+    def test_anonymous_is_refused(self):
+        with self._client() as client:
+            assert client.post("/api/exchange/ingest").status_code == 401
+
+    def test_wrong_token_is_refused(self, monkeypatch):
+        import app.api.routes.exchange as exchange_module
+
+        monkeypatch.setattr(exchange_module.settings, "ingest_token", "correct-token")
+        with self._client() as client:
+            response = client.post("/api/exchange/ingest",
+                                   headers={"X-Ingest-Token": "wrong-token"})
+        assert response.status_code == 403
+
+    def test_token_is_compared_in_constant_time(self):
+        """A plain `==` leaks the secret's prefix to anyone timing the
+        endpoint, so the comparison must go through compare_digest."""
+        import inspect
+
+        import app.api.routes.exchange as exchange_module
+
+        source = inspect.getsource(exchange_module.ingest_caller)
+        assert "compare_digest" in source
+        assert "== configured" not in source
+
+    def test_token_is_ignored_when_none_is_configured(self, monkeypatch):
+        """An unset token must not become a wildcard that accepts anything."""
+        import app.api.routes.exchange as exchange_module
+
+        monkeypatch.setattr(exchange_module.settings, "ingest_token", "")
+        with self._client() as client:
+            response = client.post("/api/exchange/ingest",
+                                   headers={"X-Ingest-Token": "anything"})
+        assert response.status_code == 401
+
+    def test_token_is_never_echoed_by_the_api(self, monkeypatch):
+        import app.api.routes.exchange as exchange_module
+
+        secret = "super-secret-ingest-token-value"
+        monkeypatch.setattr(exchange_module.settings, "ingest_token", secret)
+        with self._client() as client:
+            body = (client.get("/api/config/environment").text
+                    + client.get("/api/health").text)
+        assert secret not in body

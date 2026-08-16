@@ -10,19 +10,22 @@ lying by omission.
 from __future__ import annotations
 
 import logging
+import secrets
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import db_session, rate_limit, require_admin
+from app.api.deps import (current_user_optional, db_session, rate_limit,
+                         require_admin)
 from app.core.config import settings
 from app.core.data_quality import Sourced
 from app.models.exchange_data import (DealRecord, DeliveryRecord, EodBar,
                                       IngestionRun)
-from app.models.user import User
+from app.core.security import role_allows
+from app.models.user import Role, User
 from app.providers.base import ProviderError
 from app.providers.registry import registry
 from app.services.eod_ingest import backfill, delivery_history, ingest_session
@@ -438,20 +441,48 @@ def ingest_status(
     }
 
 
+def ingest_caller(
+    x_ingest_token: Optional[str] = Header(default=None, alias="X-Ingest-Token"),
+    user: Optional[User] = Depends(current_user_optional),
+) -> str:
+    """Authorise an ingestion run, by service token or by an ADMIN session.
+
+    The scheduled job presents a token rather than a human login, so CI never
+    holds a password that could sign in and do everything else. A person
+    triggering a backfill by hand still authenticates normally.
+    """
+    configured = settings.ingest_token
+    if configured and x_ingest_token:
+        # Constant-time compare: a plain `==` on a secret leaks its prefix to
+        # anyone willing to time the endpoint.
+        if secrets.compare_digest(x_ingest_token, configured):
+            return "scheduled-job"
+        raise HTTPException(403, "Invalid ingestion token.")
+
+    if user is not None and role_allows(user.role, Role.ADMIN):
+        return user.email
+
+    raise HTTPException(
+        401,
+        "Ingestion requires either a valid X-Ingest-Token header or an "
+        "authenticated ADMIN session.",
+    )
+
+
 @router.post("/exchange/ingest")
 def run_ingestion(
     on: Optional[date] = Query(None, description="Session to ingest; latest if omitted"),
     days: int = Query(1, ge=1, le=90,
                       description="Backfill this many trading days ending at `on`"),
     db: Session = Depends(db_session),
-    admin: User = Depends(require_admin),
+    caller: str = Depends(ingest_caller),
 ) -> Dict[str, Any]:
     """Pull the exchange's published files into local storage.
 
-    Admin-only because it makes a burst of outbound requests to the exchange;
-    the rate limiter in the archive adapter still applies, so a large backfill
-    takes minutes rather than seconds. It is idempotent - re-ingesting a stored
-    session corrects those rows instead of duplicating them.
+    Authenticated because it makes a burst of outbound requests to the
+    exchange; the rate limiter in the archive adapter still applies, so a large
+    backfill takes minutes rather than seconds. It is idempotent - re-ingesting
+    a stored session corrects those rows instead of duplicating them.
     """
     runs = (backfill(db, days=days, end=on) if days > 1
             else ingest_session(db, on))
@@ -462,7 +493,7 @@ def run_ingestion(
         bucket[r.status] = bucket.get(r.status, 0) + 1
         bucket["rows"] += r.rows_written
     return {
-        "requested_by": admin.email,
+        "requested_by": caller,
         "sessions_requested": days,
         "runs": len(runs),
         "summary": summary,

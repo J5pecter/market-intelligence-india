@@ -6,8 +6,11 @@ name: Daily EOD ingestion
 #
 # Required repository secrets:
 #   API_BASE_URL   e.g. https://market-intelligence-api-xxxx.onrender.com
-#   API_EMAIL      an ADMIN user's email
-#   API_PASSWORD   that user's password
+#   INGEST_TOKEN   matches INGEST_TOKEN in the service environment
+#
+# Deliberately a service token rather than a human login: a password in CI
+# could sign in and do everything, whereas this opens exactly one endpoint and
+# rotates without disturbing any user account.
 #
 # The job is idempotent: re-running a session that is already stored corrects
 # those rows rather than duplicating them, so a retry is always safe.
@@ -33,7 +36,8 @@ jobs:
   ingest:
     name: Pull the exchange record
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # A manual backfill of many sessions outlasts the daily run's budget.
+    timeout-minutes: 60
     steps:
       - name: Wake the instance
         env:
@@ -58,27 +62,23 @@ jobs:
       - name: Ingest
         env:
           API_BASE_URL: ${{ secrets.API_BASE_URL }}
-          API_EMAIL: ${{ secrets.API_EMAIL }}
-          API_PASSWORD: ${{ secrets.API_PASSWORD }}
+          INGEST_TOKEN: ${{ secrets.INGEST_TOKEN }}
           DAYS: ${{ github.event.inputs.days || '1' }}
         run: |
           set -euo pipefail
-
-          token=$(curl -s -m 60 -X POST "$API_BASE_URL/api/auth/login" \
-            -H "Content-Type: application/json" \
-            -d "{\"email\":\"$API_EMAIL\",\"password\":\"$API_PASSWORD\"}" \
-            | python -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))")
-
-          if [ -z "$token" ]; then
-            # Never echo the response body - it can carry token material.
-            echo "Login failed. Check API_EMAIL / API_PASSWORD and that the user has the ADMIN role."
+          if [ -z "${INGEST_TOKEN:-}" ]; then
+            echo "::error::INGEST_TOKEN is not set. Add it under Settings >" \
+                 "Secrets and variables > Actions, matching the service env var."
             exit 1
           fi
 
           echo "Ingesting $DAYS session(s)..."
-          curl -s -m 900 -X POST \
+          # A multi-day backfill downloads five archive files per session on a
+          # rate-limited free instance, so allow generous time rather than
+          # cutting a half-finished run.
+          curl -s -m 1800 -X POST \
             "$API_BASE_URL/api/exchange/ingest?days=$DAYS" \
-            -H "Authorization: Bearer $token" \
+            -H "X-Ingest-Token: $INGEST_TOKEN" \
             -o response.json -w "HTTP %{http_code}\n"
 
           python - <<'PY'
