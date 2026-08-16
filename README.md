@@ -607,7 +607,27 @@ Required repository secrets:
 | --- | --- | --- |
 | `RENDER_DEPLOY_HOOK` | `ci.yml` | Render → service → Settings → Deploy Hook. Rotate with **Regenerate hook**. |
 | `API_BASE_URL` | `ci.yml`, `ingest.yml` | the deployed API origin |
-| `API_EMAIL`, `API_PASSWORD` | `ingest.yml` | an ADMIN user, for the nightly EOD ingestion |
+| `INGEST_TOKEN` | `ingest.yml` | must match the `INGEST_TOKEN` service env var |
+
+`INGEST_TOKEN` is deliberately a **service credential, not a login**. The
+obvious alternative — storing an admin's email and password in CI — hands the
+scheduled job a credential that can sign in and do everything the platform
+allows, in order to run one idempotent import of published files. The token
+opens exactly `POST /api/exchange/ingest`, needs no user account to exist, and
+rotates without disturbing anyone's access. It is compared with
+`secrets.compare_digest`, because a plain `==` on a secret leaks its prefix to
+anyone willing to time the endpoint. An unset token is not a wildcard: with
+none configured the header is ignored and an ADMIN session is required instead.
+
+Generate one with:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+Then set it in **both** places — the Render service environment and the GitHub
+secret. On Render, note that **Save only** does not restart the service, so the
+new value is not picked up until the next deploy.
 
 The hook URL is a credential. `curl` writes its response to a file rather than
 stdout so neither the URL nor the deploy id lands in a public build log.
