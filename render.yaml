@@ -13,7 +13,11 @@ services:
     healthCheckPath: /api/health
     envVars:
       - key: APP_ENV
-        value: PRODUCTION          # demo rows become unservable
+        # DEMO so a fresh deployment actually shows the platform working; every
+        # seeded row it serves is badged DEMO in the UI and in the API payload.
+        # Switch to PRODUCTION once you have wired a real data source - that
+        # makes seeded rows unservable rather than merely labelled.
+        value: DEMO
       - key: SECRET_KEY
         generateValue: true
       - key: DATABASE_URL

@@ -336,3 +336,29 @@ def test_editing_a_call_requires_a_reason(app_client, admin_token):
         json={"changes": {"target_1": 400.0}},
     )
     assert response.status_code == 422  # `reason` is required by the schema
+
+
+# --------------------------------------------------------------------------
+# Deployment configuration
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        # Render, Heroku and Railway all export this shape. SQLAlchemy 2.0
+        # rejects it outright, so a deployment would fail on boot.
+        ("postgres://u:p@host:5432/db", "postgresql+psycopg://u:p@host:5432/db"),
+        # Resolves to psycopg2, which this project does not install.
+        ("postgresql://u:p@host:5432/db", "postgresql+psycopg://u:p@host:5432/db"),
+        # Already correct - left alone.
+        ("postgresql+psycopg://u:p@host:5432/db",
+         "postgresql+psycopg://u:p@host:5432/db"),
+        ("sqlite:///./market_intel.db", "sqlite:///./market_intel.db"),
+    ],
+)
+def test_managed_postgres_urls_are_normalised(monkeypatch, raw, expected):
+    from app.core.config import Settings
+
+    monkeypatch.setenv("DATABASE_URL", raw)
+    assert Settings().database_url == expected

@@ -89,6 +89,22 @@ class Settings(BaseSettings):
     bootstrap_admin_email: str = "admin@example.com"
     bootstrap_admin_password: str = ""
 
+    @field_validator("database_url", mode="after")
+    @classmethod
+    def _normalise_database_url(cls, value: str) -> str:
+        """Accept the URL shape managed Postgres providers actually hand out.
+
+        Render, Heroku, Railway and Supabase all export `postgres://…`, which
+        SQLAlchemy 2.0 refuses outright, and `postgresql://…`, which resolves
+        to psycopg2 rather than the psycopg 3 driver this project installs.
+        Normalising here means a deployment works with the connection string
+        pasted straight from the dashboard.
+        """
+        for prefix in ("postgres://", "postgresql://"):
+            if value.startswith(prefix):
+                return "postgresql+psycopg://" + value[len(prefix):]
+        return value
+
     @field_validator(
         "cors_origins",
         "quote_providers",
