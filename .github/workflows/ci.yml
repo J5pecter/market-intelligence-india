@@ -112,12 +112,22 @@ jobs:
           fi
           echo "No environment files, databases or uploaded documents committed."
 
-      - name: Refuse a real-looking secret key
+      - name: Refuse a real-looking secret
         run: |
           set -e
-          if git ls-files -z | xargs -0 grep -lE 'SECRET_KEY\s*=\s*["'\'']?[A-Za-z0-9_\-]{32,}' \
-             | grep -v '.github/workflows' | grep -q .; then
-            echo "A long SECRET_KEY value appears to be committed."
+          # Placeholders are the whole point of .env.example, so this check has
+          # to tell "change-me-before-you-deploy-anything" apart from an actual
+          # secret. A value that advertises itself as a placeholder passes;
+          # anything else that looks like a credential does not.
+          hits=$(git ls-files -z \
+            | xargs -0 grep -InE '(SECRET_KEY|API_SECRET|BOT_TOKEN|ACCESS_TOKEN)[[:space:]]*[:=][[:space:]]*["'\'']?[A-Za-z0-9_/+-]{24,}' \
+            | grep -vE '^\.github/workflows/' \
+            | grep -viE 'change-?me|ci-only|insecure|placeholder|example|your-|replace|not-used|dummy|redacted|<[^>]+>|\$\{' \
+            || true)
+          if [ -n "$hits" ]; then
+            echo "A real-looking secret appears to be committed:"
+            # Report file and line only - never echo the value itself.
+            echo "$hits" | cut -d: -f1,2
             exit 1
           fi
-          echo "No committed secret key."
+          echo "No committed secret detected."
