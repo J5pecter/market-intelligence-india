@@ -478,3 +478,104 @@ appropriately qualified and registered professional.
 
 Review each data provider's terms before using it, particularly in a commercial
 deployment.
+
+
+## Where the data comes from
+
+There is no free real-time feed for NSE or BSE. Anyone claiming otherwise is
+delayed, redistributing a licensed feed, or scraping. The honest tiers:
+
+| Tier | Source | Latency | Cost | Stamped |
+| --- | --- | --- | --- | --- |
+| Real-time | your broker's API | sub-second | free with a demat account (Kite is paid) | `LIVE` |
+| Delayed | Yahoo Finance | ~15 min | free | `DELAYED` |
+| End-of-day | NSE / BSE published archives | after the close | free | `DELAYED`, session-dated |
+| Reference | AMFI, RBI, World Bank | daily to annual | free | `DELAYED` / `UNVERIFIED` |
+
+A broker adapter is the **only** one allowed to stamp an envelope `LIVE`, and
+`freshness()` still decides from the observation timestamp — a reconnect that
+replays an old tick cannot masquerade as live.
+
+### Turning on a real-time feed
+
+Fill in one broker's credentials and it is inserted at the head of the quote,
+history and option-chain chains automatically. Leave them blank and it is
+removed from every chain entirely, rather than sitting there failing.
+
+```bash
+# Angel One — free with a demat account. PASSWORD is your MPIN, and
+# TOTP_SECRET is the base32 string shown when you enable TOTP, not the code.
+ANGELONE_API_KEY=...
+ANGELONE_CLIENT_CODE=...
+ANGELONE_PASSWORD=...
+ANGELONE_TOTP_SECRET=...
+```
+
+Dhan, Zerodha Kite and Upstox are also supported — see `backend/.env.example`.
+Credentials are read from the environment, never logged, and never returned by
+any endpoint: the public routes report how many fields are outstanding, not
+which ones.
+
+## Is this number right?
+
+`GET /api/exchange/verify/{symbol}` is the endpoint to hit before putting a
+figure into your own research. Everywhere else the provider registry returns
+the first source that answers — right for keeping a screen populated, wrong for
+research, because one vendor's bad tick silently becomes your input.
+
+This asks **every** capable source independently and compares them:
+
+| Verdict | Meaning |
+| --- | --- |
+| `CONFIRMED` | two or more independent sources agree within tolerance; a consensus is published |
+| `MINOR_DIVERGENCE` | outside tolerance but within 3×; no consensus |
+| `CONFLICT` | materially different numbers; no consensus |
+| `SINGLE_SOURCE` | only one source answered; returned, explicitly unverified |
+| `UNAVAILABLE` | nobody answered, with each failure reason listed |
+
+A consensus is published **only** on `CONFIRMED`. Handing back a median of
+conflicting numbers would invent a figure no source reported.
+
+Cross-venue comparisons get a wider tolerance because NSE and BSE are separate
+order books — the same stock genuinely closes at different prices on each, and
+flagging that would cry wolf on every dual-listed name.
+
+## What the exchange record gives you that a price feed cannot
+
+`GET /api/exchange/...` serves the official published files.
+
+**Delivery percentage** is the one that matters most. It is the share of a
+session's volume that actually settled into demat accounts rather than being
+squared off intraday. Two stocks can print identical candles and mean opposite
+things: +6% on 78% delivery is stock leaving the market, +6% on 14% is churn
+that often round-trips. No OHLC series can separate those, and no free vendor
+publishes the split.
+
+It is judged against the stock's **own** stored history, never a market-wide
+threshold — utilities habitually deliver 70%+ and index heavyweights 30–40%, so
+one threshold just re-discovers the sector. Below 20 stored sessions it reports
+`UNKNOWN` rather than guessing.
+
+Also served: market breadth from the bhavcopy (headline is the **median** scrip,
+because an index can rise on five names while most of the market falls), and
+bulk and block deal registers netted per symbol (both legs are disclosed, so
+gross quantity double-counts).
+
+### Building the history
+
+The exchange publishes each day's file and moves on; nobody backfills it. So
+the history only exists if something keeps it:
+
+```bash
+curl -X POST "$API/api/exchange/ingest?days=30" -H "Authorization: Bearer $TOKEN"
+```
+
+Free Render instances sleep, so the in-process scheduler cannot be relied on to
+fire after the close. `.github/workflows/ingest.yml` drives it from GitHub's
+scheduler instead. Ingestion is idempotent — re-running a stored session
+corrects it rather than duplicating it.
+
+`GET /api/exchange/ingest/status` reports how many sessions are stored and
+whether the delivery percentile is usable yet. Every dataset writes an audit row
+even when nothing is stored, because "the exchange published nothing" and "the
+job never ran" look identical in the data and need opposite responses.
