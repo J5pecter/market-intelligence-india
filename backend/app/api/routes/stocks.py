@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from app.db.filters import hide_demo
 from app.api.deps import db_session, rate_limit
 from app.core.market_calendar import market_state
 from app.models.fundamental import (CompanyProfile, CorporateAction,
@@ -414,8 +415,10 @@ def stock_calls(symbol: str,
                 db: Session = Depends(db_session)) -> Dict[str, Any]:
     instrument = _instrument_or_404(db, symbol)
     calls = db.execute(
-        select(ResearchCall)
-        .where(ResearchCall.symbol == instrument.symbol)
+        hide_demo(
+            select(ResearchCall).where(ResearchCall.symbol == instrument.symbol),
+            ResearchCall,
+        )
         .order_by(ResearchCall.published_at.desc())
     ).scalars().all()
 
@@ -507,7 +510,8 @@ def list_indices(db: Session = Depends(db_session)) -> Dict[str, Any]:
             "provenance": env.to_dict(),
         }
     stored = db.execute(
-        select(IndexSnapshot).order_by(IndexSnapshot.as_of.desc()).limit(30)
+        hide_demo(select(IndexSnapshot), IndexSnapshot)
+        .order_by(IndexSnapshot.as_of.desc()).limit(30)
     ).scalars().all()
     return {
         "available": bool(stored),
@@ -544,7 +548,10 @@ def index_detail(symbol: str, interval: str = Query(default="1d"),
     contributions: List[Dict[str, Any]] = []
     for member in constituents:
         quote = db.execute(
-            select(Quote).where(Quote.symbol == member.constituent_symbol)
+            hide_demo(
+                select(Quote).where(Quote.symbol == member.constituent_symbol),
+                Quote,
+            )
         ).scalars().first()
         if quote and quote.change_pct is not None and member.weight_pct:
             contributions.append({

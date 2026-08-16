@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.db.filters import hide_demo
 from app.api.deps import current_user_optional, db_session, rate_limit
 from app.core.compliance import disclaimers
 from app.models.research import (ResearchCall, ResearchCallVersion,
@@ -47,8 +48,10 @@ def list_calls(
     db: Session = Depends(db_session),
 ) -> Dict[str, Any]:
     stmt = (
-        select(ResearchCall)
-        .where(ResearchCall.is_published.is_(True))
+        hide_demo(
+            select(ResearchCall).where(ResearchCall.is_published.is_(True)),
+            ResearchCall,
+        )
         .order_by(ResearchCall.published_at.desc())
         .limit(limit)
     )
@@ -91,7 +94,8 @@ def list_calls(
 def call_detail(call_id: str,
                 db: Session = Depends(db_session)) -> Dict[str, Any]:
     call = db.execute(
-        select(ResearchCall).where(ResearchCall.id == call_id)
+        hide_demo(select(ResearchCall).where(ResearchCall.id == call_id),
+                  ResearchCall)
     ).scalars().first()
     if call is None:
         raise HTTPException(404, "Research call not found.")

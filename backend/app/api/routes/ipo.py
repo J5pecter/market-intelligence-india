@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.db.filters import hide_demo
 from app.api.deps import db_session, rate_limit
 from app.core.compliance import disclaimers
 from app.models.ipo import (Ipo, IpoAnalysis, IpoFinancials, IpoGmpHistory,
@@ -23,7 +24,10 @@ router = APIRouter(prefix="/ipo", tags=["ipo"])
 
 def _ipo_or_404(db: Session, identifier: str) -> Ipo:
     ipo = db.execute(
-        select(Ipo).where((Ipo.id == identifier) | (Ipo.slug == identifier))
+        hide_demo(
+            select(Ipo).where((Ipo.id == identifier) | (Ipo.slug == identifier)),
+            Ipo,
+        )
     ).scalars().first()
     if ipo is None:
         raise HTTPException(404, f"No IPO found for '{identifier}'.")
@@ -48,7 +52,8 @@ def _latest_subscription(db: Session, ipo_id: str) -> Optional[IpoSubscription]:
 def list_ipos(status: Optional[str] = None,
               ipo_type: Optional[str] = None,
               db: Session = Depends(db_session)) -> Dict[str, Any]:
-    stmt = select(Ipo).order_by(Ipo.open_date.desc().nullslast())
+    stmt = hide_demo(select(Ipo), Ipo).order_by(
+        Ipo.open_date.desc().nullslast())
     if status:
         stmt = stmt.where(Ipo.status == status.upper())
     if ipo_type:

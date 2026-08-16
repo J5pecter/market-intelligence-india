@@ -376,3 +376,63 @@ class TestPersonalUseMode:
         for banned in ("SEBI", "registered", "certified", "approved"):
             assert banned.lower() not in descriptor.lower()
         assert verification_badge() is None
+
+
+# --------------------------------------------------------------------------
+# PRODUCTION must refuse seeded rows, not merely label them
+# --------------------------------------------------------------------------
+
+
+class TestProductionRefusesDemoRows:
+    """`providers_for()` keeps the demo provider out of fetch chains, but
+    seeded rows already in the database are read straight from it and never
+    touch a provider. This is the regression guard for that gap."""
+
+    def test_hide_demo_is_a_noop_when_demo_is_allowed(self, monkeypatch):
+        import app.core.config as config_module
+        import app.db.filters as filters
+        from app.models.research import ResearchCall
+        from sqlalchemy import select
+
+        monkeypatch.setattr(filters.settings, "app_env",
+                            config_module.AppEnv.DEMO)
+        stmt = select(ResearchCall)
+        assert str(filters.hide_demo(stmt, ResearchCall)) == str(stmt)
+
+    def test_hide_demo_filters_when_production(self, monkeypatch):
+        import app.core.config as config_module
+        import app.db.filters as filters
+        from app.models.research import ResearchCall
+        from sqlalchemy import select
+
+        monkeypatch.setattr(filters.settings, "app_env",
+                            config_module.AppEnv.PRODUCTION)
+        rendered = str(filters.hide_demo(select(ResearchCall), ResearchCall))
+        assert "is_demo" in rendered
+
+    def test_no_endpoint_serves_a_demo_row_in_production(self, monkeypatch):
+        """End to end: seed the database, flip to PRODUCTION, and assert that
+        every public read path returns nothing marked is_demo."""
+        import app.core.config as config_module
+        from fastapi.testclient import TestClient
+
+        import app.main as main_module
+
+        with TestClient(main_module.app) as client:
+            # Seeded rows are visible in DEMO - otherwise this test would pass
+            # for the wrong reason.
+            seeded = client.get("/api/research/calls").json().get("calls", [])
+            assert seeded, "fixture problem: nothing seeded to hide"
+
+            for module in (config_module, __import__("app.db.filters",
+                                                     fromlist=["settings"])):
+                monkeypatch.setattr(module.settings, "app_env",
+                                    config_module.AppEnv.PRODUCTION)
+
+            for path in ("/api/research/calls", "/api/ipo", "/api/market/overview"):
+                response = client.get(path)
+                if response.status_code >= 400:
+                    continue
+                body = response.text
+                assert '"is_demo":true' not in body.lower().replace(" ", ""), \
+                    f"{path} served a seeded row in PRODUCTION"

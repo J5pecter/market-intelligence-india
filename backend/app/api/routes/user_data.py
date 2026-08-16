@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.db.filters import hide_demo
 from app.api.deps import current_user, db_session
 from app.models.instrument import Instrument
 from app.models.market import Quote, TechnicalIndicatorSnapshot
@@ -112,7 +113,7 @@ def watchlist_detail(watchlist_id: str, user: User = Depends(current_user),
             ).scalars().first()
 
         call = db.execute(
-            select(ResearchCall)
+            hide_demo(select(ResearchCall), ResearchCall)
             .where(ResearchCall.symbol == item.symbol)
             .where(ResearchCall.is_published.is_(True))
             .order_by(ResearchCall.published_at.desc()).limit(1)

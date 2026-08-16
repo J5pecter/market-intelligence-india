@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import db_session, rate_limit
 from app.core.config import settings
+from app.db.filters import hide_demo
 from app.core.data_quality import Sourced, data_quality_score
 from app.core.market_calendar import IST, market_state, now_ist
 from app.models.fundamental import CorporateAction, EarningsEvent
@@ -118,7 +119,8 @@ def _indices(db: Session, envelopes: List[Sourced[Any]]) -> Dict[str, Any]:
         }
 
     stored = db.execute(
-        select(IndexSnapshot).order_by(IndexSnapshot.as_of.desc()).limit(12)
+        hide_demo(select(IndexSnapshot), IndexSnapshot)
+        .order_by(IndexSnapshot.as_of.desc()).limit(12)
     ).scalars().all()
     if stored:
         return {
@@ -140,10 +142,11 @@ def _indices(db: Session, envelopes: List[Sourced[Any]]) -> Dict[str, Any]:
 
 
 def _movers(db: Session) -> Dict[str, List[Dict[str, Any]]]:
-    base = (
+    base = hide_demo(
         select(Quote, Instrument.name, Instrument.sector)
         .join(Instrument, Instrument.id == Quote.instrument_id)
-        .where(Instrument.segment == "EQUITY")
+        .where(Instrument.segment == "EQUITY"),
+        Quote,
     )
 
     def _rows(stmt, extra=None) -> List[Dict[str, Any]]:
@@ -423,7 +426,7 @@ def _top_news(db: Session) -> List[Dict[str, Any]]:
 
 def _active_calls(db: Session) -> List[Dict[str, Any]]:
     rows = db.execute(
-        select(ResearchCall)
+        hide_demo(select(ResearchCall), ResearchCall)
         .where(ResearchCall.is_published.is_(True))
         .where(ResearchCall.status.notin_(
             ["EXPIRED", "INVALIDATED", "TARGET_ACHIEVED", "STOP_LOSS_TRIGGERED"]
@@ -494,7 +497,7 @@ def _ipo_summary(db: Session) -> Dict[str, Any]:
     from app.models.ipo import Ipo, IpoGmpHistory
 
     rows = db.execute(
-        select(Ipo).where(Ipo.status.in_(["OPEN", "UPCOMING"]))
+        hide_demo(select(Ipo).where(Ipo.status.in_(["OPEN", "UPCOMING"])), Ipo)
         .order_by(Ipo.open_date).limit(8)
     ).scalars().all()
     out = []
@@ -550,7 +553,9 @@ def search(q: str = Query(min_length=1, max_length=60),
     results = []
     for instrument in rows:
         quote = db.execute(
-            select(Quote).where(Quote.instrument_id == instrument.id)
+            hide_demo(
+                select(Quote).where(Quote.instrument_id == instrument.id), Quote
+            )
         ).scalars().first()
         results.append({
             "symbol": instrument.symbol,
